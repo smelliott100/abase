@@ -2,8 +2,8 @@
 /*
 Plugin Name: ABASE for Accessing MySQL Databases
 Plugin URI: http://abase.com/
-Description: Create a form, display a table or send an email. Short code: [abase ack="" alink="" center="" cols="" columns="" database="" db="" echo="" elements="" emailbcc="" emailcc="" emailfrom="" emailorigin="" emailsubject="" emailto="" fields="" files="" form="" from="" group="" images="" insert="" left="" limit="" notable="" notitle="" or="" order="" password="" required="" right="" rlink="" rownum="" search="" select="" sql="" style="" table="" update="" where=""]. To setup up to 3 databases and for complete attribute documentation, click Settings link at left.
-Version: 2.5.1
+Description: Create a form, display a table or send an email. Short code: [abase ack="" alink="" center="" cols="" columns="" database="" db="" echo="" elements="" emailbcc="" emailcc="" emailfrom="" emailorigin="" emailsubject="" emailto="" fields="" files="" form="" from="" group="" images="" insert="" left="" limit="" notable="" notitle="" or="" order="" password="" required="" right="" rlink="" rownum="" search="" select="" sql="" style="" table="" update="" where=""]. To setup up to 9 databases and for complete attribute documentation, click Settings link at left.
+Version: 2.6
 Author: Richard Halverson
 Author URI: http://abase.com/
 License: GPLv2. See http://www.gnu.org/licenses/gpl.html
@@ -16,20 +16,30 @@ License: GPLv2. See http://www.gnu.org/licenses/gpl.html
 
 /*
 
-Version 2.5.1 Added disable wptexturization making using < or > in attribute specifications easier. Database names now default to the user name prefix when only one database setting is displayed. Spaces around commas in attributes now allowed. PHP files are no longer uploadable. Added wptexturize suggestion in error message.
+Version 2.6  Number of databases increased from 3 to 9. Adjusted shortcode echo to be compatible with Visual Edit Page entry. Replaced PHP split() with explode().
 
 */
+/*
+SME - Added the follwoing options along with updating some of the code.
+"default"=>'' This takes a comma delimiated list and places the values in the fields of an insert form as the defaut value of the                   field.  ^^^^ Need to Check update forms to see if it messes things up^^^^ <- Just thought of this.
+"choice_vals"=>''  This takes in the values for the choice field type (see below)
+
+Field Type of choice added.  define it as part of the element style syntax and then add the choice vals with the format of
+              choice_vals=field^value1^value2^value3!field^value1^value2^value3
+              
+*/
+require('deprecated-abase.php');
 
 if(get_option('bus311mtd_disable_wptexturize')) remove_filter('the_content', 'wptexturize');
 
 add_action( 'admin_menu', 'table_display_plugin_menu' );
 
-$GLOBALS['bus311mtd_Settings_Option_Text']='ABASE for MySQL';
-$GLOBALS['bus311mtd_Settings_Header_Text']='ABASE Access MySQL Database Options';
-$GLOBALS['bus311mtd_Settings_Page_Slug']='abase';
+$GLOBALS['abase_Settings_Option_Text']='ABASE for MySQL';
+$GLOBALS['abase_Settings_Header_Text']='ABASE Access MySQL Database Options';
+$GLOBALS['abase_Settings_Page_Slug']='abase';
 
 function table_display_plugin_menu() {
-	add_options_page( $GLOBALS['bus311mtd_Settings_Header_Text'], $GLOBALS['bus311mtd_Settings_Option_Text'], 'manage_options', $GLOBALS['bus311mtd_Settings_Page_Slug'], 'table_display_plugin_options' );
+	add_options_page( $GLOBALS['abase_Settings_Header_Text'], $GLOBALS['abase_Settings_Option_Text'], 'manage_options', $GLOBALS['abase_Settings_Page_Slug'], 'table_display_plugin_options' );
 }
 
 function register_my_setting() {
@@ -41,68 +51,64 @@ add_action( 'admin_init', 'register_my_setting' );
 
 include("abase_plugin_options.php");
 
-add_shortcode("ABASE", "ABASE_handlerA");
+add_shortcode("ABASE", "abase_handler");
 add_shortcode("abase", "abase_handler");
-add_shortcode("abase2", "abase_handler2");
-add_shortcode("abase3", "abase_handler3");
-add_shortcode("bus311-table-display", "bus311tabledisplay_handler");
+add_shortcode("abase2", "abase_handler");
+add_shortcode("abase3", "abase_handler");
+add_shortcode("bus311-table-display", "abase_handler");
 
 function your_plugin_settings_link($links) { 
-  $settings_link = '<a href="options-general.php?page='.$GLOBALS['bus311mtd_Settings_Page_Slug'].'">Settings</a>'; 
+  $settings_link = '<a href="options-general.php?page='.$GLOBALS['abase_Settings_Page_Slug'].'">Settings</a>'; 
   array_unshift($links, $settings_link); 
   return $links; 
 };
+//sme combined to decrease duplication - Still think they can be removed?
+//sme removed Deprecated options.
+// "image_style"=>'', "input_styles"=>'', "styles"=>'' are no longer used and should be removed
+//sme added default values default=
+
 
 $plugin = plugin_basename(__FILE__); 
 add_filter("plugin_action_links_$plugin", 'your_plugin_settings_link' );
-function abase_handler($incomingfrompost, $content = null) {
-	record_progress(__LINE__,'abase');
-	$incomingfrompost=shortcode_atts(array("db"=>'', "form"=>'', "table"=>'', "elements"=>'', "emailto"=>'', "emailfrom"=>'', "emailsubject"=>'', "emailcc"=>'', "emailbcc"=>'', "emailorigin"=>'', "password"=>'', "required"=>'', "select"=>'', "from"=>'', "sql"=>'', "where"=>'', "or"=>'', "group"=>'', "order"=>'', "limit"=>'', "cols"=>'', "columns"=>'', "fields"=>'', "files"=>'', "images"=>'', "notable"=>'', "notitle"=>'', "rownum"=>'', "style"=>'', "center"=>'', "left"=>'', "right"=>'', "rlink"=>'', "alink"=>'', "ack"=>'', "echo"=>'', "link"=>'', "update"=>'', "search"=>'', "insert"=>'', "database"=>'', "image_style"=>'', "input_styles"=>'', "styles"=>''), $incomingfrompost);
-	$abase_output = bus311tabledisplay_function(0,$incomingfrompost,$content);
+function abase_handler($incomingfrompost, $content = null, $tag) {
+	record_progress(__LINE__,'abase' );
+	$incomingfrompost=shortcode_atts(array("db"=>'', "form"=>'', "table"=>'', "elements"=>'', "emailto"=>'', "emailfrom"=>'', "emailsubject"=>'', "emailcc"=>'', "emailbcc"=>'', "emailorigin"=>'', "password"=>'', "required"=>'', "select"=>'', "from"=>'', "sql"=>'', "where"=>'', "or"=>'', "group"=>'', "order"=>'', "limit"=>'', "cols"=>'', "columns"=>'', "fields"=>'', "files"=>'', "images"=>'', "notable"=>'', "notitle"=>'', "rownum"=>'', "style"=>'', "center"=>'', "left"=>'', "right"=>'', "rlink"=>'', "alink"=>'', "ack"=>'', "echo"=>'', "link"=>'', "update"=>'', "search"=>'', "insert"=>'', "database"=>'',"default"=>'',"choice_vals"=>'' ), $incomingfrompost);
+     switch ( $tag ) {
+        case 'abase':
+             $tagversion = 0;
+        break;
+        case 'abase2':
+             $tagversion = 2;
+        break;
+        case 'abase3':
+             $tagversion = 3;
+        break;
+        case 'ABASE':
+             $tagversion = -1;
+        break;
+        case 'bus311-table-display':
+             $tagversion = 1;
+        break;
+     }
+	$abase_output = abasetabledisplay_function($tagversion,$incomingfrompost,$content);
 	return $abase_output;
 };
-
-// "image_style"=>'', "input_styles"=>'', "styles"=>'' are no longer used and should be removed
-
-function abase_handler2($incomingfrompost, $content = null) {
-	record_progress(__LINE__,'abase2');
-	$incomingfrompost=shortcode_atts(array("db"=>'', "form"=>'', "table"=>'', "elements"=>'', "emailto"=>'', "emailfrom"=>'', "emailsubject"=>'', "emailcc"=>'', "emailbcc"=>'', "emailorigin"=>'', "password"=>'', "required"=>'', "select"=>'', "from"=>'', "sql"=>'', "where"=>'', "or"=>'', "group"=>'', "order"=>'', "limit"=>'', "cols"=>'', "columns"=>'', "fields"=>'', "files"=>'', "images"=>'', "notable"=>'', "notitle"=>'', "rownum"=>'', "style"=>'', "center"=>'', "left"=>'', "right"=>'', "rlink"=>'', "alink"=>'', "ack"=>'', "echo"=>'', "link"=>'', "update"=>'', "search"=>'', "insert"=>'', "database"=>'', "image_style"=>'', "input_styles"=>'', "styles"=>''), $incomingfrompost);
-	$abase_output = bus311tabledisplay_function(2,$incomingfrompost,$content);
-	return $abase_output;
-};
-function abase_handler3($incomingfrompost, $content = null) {
-	record_progress(__LINE__,'abase3');
-	$incomingfrompost=shortcode_atts(array("db"=>'', "form"=>'', "table"=>'', "elements"=>'', "emailto"=>'', "emailfrom"=>'', "emailsubject"=>'', "emailcc"=>'', "emailbcc"=>'', "emailorigin"=>'', "password"=>'', "required"=>'', "select"=>'', "from"=>'', "sql"=>'', "where"=>'', "or"=>'', "group"=>'', "order"=>'', "limit"=>'', "cols"=>'', "columns"=>'', "fields"=>'', "files"=>'', "images"=>'', "notable"=>'', "notitle"=>'', "rownum"=>'', "style"=>'', "center"=>'', "left"=>'', "right"=>'', "rlink"=>'', "alink"=>'', "ack"=>'', "echo"=>'', "link"=>'', "update"=>'', "search"=>'', "insert"=>'', "database"=>'', "image_style"=>'', "input_styles"=>'', "styles"=>''), $incomingfrompost);
-	$abase_output = bus311tabledisplay_function(3,$incomingfrompost,$content);
-	return $abase_output;
-};
-function ABASE_handlerA($incomingfrompost, $content = null) {
-	record_progress(__LINE__,'ABASE');
-	$incomingfrompost=shortcode_atts(array("db"=>'', "form"=>'', "table"=>'', "elements"=>'', "emailto"=>'', "emailfrom"=>'', "emailsubject"=>'', "emailcc"=>'', "emailbcc"=>'', "emailorigin"=>'', "password"=>'', "required"=>'', "select"=>'', "from"=>'', "sql"=>'', "where"=>'', "or"=>'', "group"=>'', "order"=>'', "limit"=>'', "cols"=>'', "columns"=>'', "fields"=>'', "files"=>'', "images"=>'', "notable"=>'', "notitle"=>'', "rownum"=>'', "style"=>'', "center"=>'', "left"=>'', "right"=>'', "rlink"=>'', "alink"=>'', "ack"=>'', "echo"=>'', "link"=>'', "update"=>'', "search"=>'', "insert"=>'', "database"=>'', "image_style"=>'', "input_styles"=>'', "styles"=>''), $incomingfrompost);
-	$abase_output = bus311tabledisplay_function('-1',$incomingfrompost,$content);
-	return $abase_output;
-};
-function bus311tabledisplay_handler($incomingfrompost, $content = null) {
-	record_progress(__LINE__,'bus311-table-display');
-	$incomingfrompost=shortcode_atts(array("db"=>'', "form"=>'', "table"=>'', "elements"=>'', "emailto"=>'', "emailfrom"=>'', "emailsubject"=>'', "emailcc"=>'', "emailbcc"=>'', "emailorigin"=>'', "password"=>'', "required"=>'', "select"=>'', "from"=>'', "sql"=>'', "where"=>'', "or"=>'', "group"=>'', "order"=>'', "limit"=>'', "cols"=>'', "columns"=>'', "fields"=>'', "files"=>'', "images"=>'', "notable"=>'', "notitle"=>'', "rownum"=>'', "style"=>'', "center"=>'', "left"=>'', "right"=>'', "rlink"=>'', "alink"=>'', "ack"=>'', "echo"=>'', "link"=>'', "update"=>'', "search"=>'', "insert"=>'', "database"=>'', "image_style"=>'', "input_styles"=>'', "styles"=>''), $incomingfrompost);
-	$abase_output = bus311tabledisplay_function(1,$incomingfrompost,$content);
-	return $abase_output;
-};
-
 
 function record_progress($ln,$msg){
-	$testing_remote_address='';
+	$testing_remote_address='';//::1
 	if($testing_remote_address!=''){
-		$progress_log_file="abase_progress.txt";
+		$progress_log_file=WP_CONTENT_DIR . "/error.log";
 		$date = date("r");
 		$secs = date('s');
 		$remote_addr=$_SERVER['REMOTE_ADDR'];
+        error_log($remote_addr);
 		if($remote_addr==$testing_remote_address){
+            $sme="1";
 			$sip=preg_split("/\./",$remote_addr); $submitip=(($sip[0]*31+$sip[1])*31+$sip[2])*31+$sip[3];
 			$submitip=time().':'.$remote_addr;
 			$addr_sip="$remote_addr ($submitip)";
 			if(strtolower($msg)=='start'){
-				$msg2="********************************* START EXECUTION ********************************** $addr_sip";
+				$msg2="1********************************* START EXECUTION ********************************** $addr_sip";
 				$msg3="\n\n$msg2\n$date, Line: $ln, Path: ".$_SERVER['REQUEST_URI'];
 				if($_SERVER['QUERY_STRING']>''){$msg3.="?".$_SERVER['QUERY_STRING'];};
 				if($_POST['_submit']>''){$msg3.="  Submitter Code: ".$_POST['_submit'];};
@@ -136,79 +142,27 @@ function record_progress($ln,$msg){
 		};
 	};
 };
+function abase_choice_split($key_in){
+    // choice_vals=field^value1^value2^value3!field^value1^value2^value3
+    $key_in=trim($key_in);
+	$wkey=htmlspecialchars_decode($key_in);
+    //$eles=explode(',',$elements_in);
+   
+    if(strpos($wkey,'!')){
+        $ckey = explode('!',$wkey);
+    }
+    else{
+        $ckey = $wkey;
+    }
 
-function verify_form(){
-	$timeip=$_POST['_submit'];
-	$form_min = get_option('bus311mtd_form_min');
-	$form_max = get_option('bus311mtd_form_max');
+    for($i=0;$i<count($ckey);$i++){
+        list($k,$v)=explode(':',$ckey[$i]);
+        $choice_val[$k]=$v;          
+    }
+   return $choice_val;
+}
 
-//	if $form_min==0 and $form_max==0 then no enforcement
-//	if $form_max>0 and $form_min==0 then no min time
-//	if $form_min>0 and $form_max==0 then $form_max=86400
-//	return 1 for VALID. return -2 for expired. return 0 for doesn't exist. return -1 for minimum time not yet reached.
-
-	if($form_min>0 || $form_max>0){
-		$dir="abase_valid_forms";
-		if(!is_dir($dir)){mkdir($dir);};
-		$ret=0;
-		$enforce=1;
-		if($form_min==0 && $form_max==0){
-			$enforce=0;
-		}else if($form_max==0){
-			$form_max=86400;
-		};
-		if($enforce==1){
-			if(file_get_contents("$dir/$timeip",true)){
-				$tim=file_get_contents("$dir/$timeip",true);
-				if(time()<$tim+$form_min){
-	//	minimum time hasn't been reached yet
-					$ret=-1;
-				}else if(time()<=$tim+$form_max){
-	//	minimum time has been reached, maximum time has not been reached VALID
-					$ret=1;
-					unlink("$dir/$timeip");
-				}else{
-	//	maximum time has been exceeded
-					$ret=-2;
-				};
-			}else{
-				$ret=0;
-			};
-		}else{
-			$ret=1;
-		};
-	// clean house
-		foreach(glob($dir.'/*.*') as $file) {
-			$tim=file_get_contents($file,true);
-			if(time()>$tim+$form_max){
-				unlink($file);
-			};
-		};
-	}else{
-		$ret=1;
-	};
-	return $ret;
-};
-
-function add_valid_form($timeip){
-	$form_min = get_option('bus311mtd_form_min');
-	$form_max = get_option('bus311mtd_form_max');
-	$dir="abase_valid_forms";
-	if($form_min>0 || $form_max>0){
-		if(!is_dir($dir)){mkdir($dir);};
-		list($tim,$ip)=preg_split("/\:/",$timeip);
-		file_put_contents("$dir/$timeip",$tim);
-// clean house
-		foreach(glob($dir.'/*.*') as $file) {
-			$tim=file_get_contents($file,true);
-			if(time()>$tim+$form_max){
-				unlink($file);
-			};
-		};
-	};
-};
-
-function bus311tabledisplay_field_split($key_in){
+function abase_field_split($key_in){
 //	<field_spec> ::= ( <column_title>^ ) <column_name> ( |<foreign_column> ) ( @'<value_format>' ) ( !'<element_style>' ) ( [>|>=|=|<=|<|!=] ( % ) <operand> ) ( % ) ( $ ( <button_value> ) )
 //	special characters: ^ | $ > >= = <= < != %
 //	<operand> ::= <surrogate> | <integer> | ' <constant> '
@@ -232,22 +186,18 @@ function bus311tabledisplay_field_split($key_in){
 	$input_types['time']=1;
 	$input_types['url']=1;
 	$input_types['textarea']=1;
-
+    $input_types['choice']=1;
+    
 	if(strpos(" $wkey",'^')){
 		$column_title=substr($wkey,0,strpos($wkey,'^'));
 		$wkey=substr($wkey,strpos($wkey,'^')+1);
 	};
-//	if(substr($wkey,0,1)=='(' && strpos($wkey,')')>0){
-//		$column_name=substr($wkey,0,strpos($wkey,')'));
-//		$wkey=substr($wkey,strpos($wkey,')')+1);
-//	};
 
 	if(strpos($wkey,'$')){
 		$submit_button='$';
 		$button_value=substr($wkey,strpos($wkey,'$')+1);
 		$wkey=substr($wkey,0,strpos($wkey,'$'));
 	};
-
 
 	if(substr($wkey,-1,1)=='%'){
 		$got_pct='%';
@@ -279,6 +229,8 @@ function bus311tabledisplay_field_split($key_in){
 		if($operand=='' || is_numeric($operand)){$operand_is_constant=1;};
 		if(substr($operand,0,1)=="'" && substr($operand,-1,1)=="'"){$operand=substr($operand,1,strlen($operand)-2); $operand_is_constant=1;};
 	};
+    
+    //Element Type
 	if(strpos($wkey,'!')){
 		$element_style=substr($wkey,strpos($wkey,'!')+1);
 		if(substr($element_style,0,1)=="'" && substr($element_style,-1,1)=="'"){$element_style=substr($element_style,1,strlen($element_style)-2);};
@@ -352,8 +304,8 @@ function send_email($to='',$subject='',$body='',$from='',$cc='',$bcc=''){
 	};
 	return $send_email_ret;
 };
-
-function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
+//sme 0- I am here
+function abasetabledisplay_function($pval,$incomingfromhandler,$content) {
 	record_progress(__LINE__,'start');
 
 	$debug_string='';
@@ -376,9 +328,9 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 // db or database will set the global database variable. [abase uses the global database variable if db or database is not specified.
 // [abase2 and [abase3 use databases 2 or 3 respective but does not change the global database variable.
 
-	if($db_in>='1' && $db_in<='3'){$GLOBALS['bus311mtd_setdb']=$db_in; $GLOBALS['bus311mtd_setdatabase']='';};
+	if($db_in>='1' && $db_in<='9'){$GLOBALS['bus311mtd_setdb']=$db_in; $GLOBALS['bus311mtd_setdatabase']='';};
 
-	if($GLOBALS['bus311mtd_setdb']!='1' && $GLOBALS['bus311mtd_setdb']!='2' && $GLOBALS['bus311mtd_setdb']!='3'){$GLOBALS['bus311mtd_setdb']='1';};
+	if($GLOBALS['bus311mtd_setdb']<'1' || $GLOBALS['bus311mtd_setdb']>'9'){$GLOBALS['bus311mtd_setdb']='1';};
 
 	if($db_in==''){
 		if($pval==2){
@@ -390,18 +342,12 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 		};
 	};
 
-	if($db_in=='2'){
-		$sqlHost = get_option('bus311mtd_dbhost2');  
-		$sqlDatabase = get_option('bus311mtd_dbname2');  
-		$sqlUser = get_option('bus311mtd_dbuser2');  
-		$sqlPass = get_option('bus311mtd_dbpwd2'); 
-		$dbFileDir = get_option('bus311mtd_dbfiles2'); 
-	}else if($db_in=='3'){
-		$sqlHost = get_option('bus311mtd_dbhost3');  
-		$sqlDatabase = get_option('bus311mtd_dbname3');  
-		$sqlUser = get_option('bus311mtd_dbuser3');  
-		$sqlPass = get_option('bus311mtd_dbpwd3'); 
-		$dbFileDir = get_option('bus311mtd_dbfiles3');
+	if($db_in>='2'){
+		$sqlHost = get_option('bus311mtd_dbhost'.$db_in);  
+		$sqlDatabase = get_option('bus311mtd_dbname'.$db_in);  
+		$sqlUser = get_option('bus311mtd_dbuser'.$db_in);  
+		$sqlPass = get_option('bus311mtd_dbpwd'.$db_in); 
+		$dbFileDir = get_option('bus311mtd_dbfiles'.$db_in); 
 	}else{
 		$sqlHost = get_option('bus311mtd_dbhost');  
 		$sqlDatabase = get_option('bus311mtd_dbname');  
@@ -453,9 +399,11 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 	$or_in=$incomingfromhandler['or'];
 	$order_in=$incomingfromhandler['order'];
 	$limit_in=$incomingfromhandler['limit'];
+    $default_in = $incomingfromhandler['default'];
 
 
-
+    $choice_in=abase_choice_split($incomingfromhandler['choice_vals']);
+    
 	$notitle_in=$incomingfromhandler['notitle'];
 	$notable_in=$incomingfromhandler['notable'];
 	$style_in=$incomingfromhandler['style'];
@@ -589,12 +537,13 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 	};
 
 	if($elements_in>''){
-		$eles=split(',',$elements_in);
+		$eles=explode(',',$elements_in);
 		$elements_in='';
 		for($j=0;$j<count($eles);$j+=1){
 			if($eles[$j]>''){
-				list($pseudo,$key,$keyOption,$submit,$op,$surro,$pct,$pct0,$constant,$element_style,$value_format,$element_type)=bus311tabledisplay_field_split($eles[$j]);
+				list($pseudo,$key,$keyOption,$submit,$op,$surro,$pct,$pct0,$constant,$element_style,$value_format,$element_type)=abase_field_split($eles[$j]);
 				$asurro='*'.$surro;
+                //add choice processing here.
 				if($key>''){$elements_in.=','.$key;};
 			};
 		};
@@ -676,7 +625,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 	};
 	$form='';$form_url='';$form_type='';
 	if($form_in>''){
-		$frms=split(',',$form_in);
+		$frms=explode(',',$form_in);
 		foreach($frms as $fm){
 			$fm=trim($fm);
 			$debug_string.=" ,fm=$fm";
@@ -802,7 +751,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 //	$ack=strtolower($updateack_in);
 	$ack='';$ack_url='';$ack_color='';
 	if($updateack_in>''){
-		$acks=split(',',$updateack_in);
+		$acks=explode(',',$updateack_in);
 		foreach($acks as $ak){
 			$ak=trim($ak);
 			$debug_string.=" ,ak=$ak";
@@ -1003,12 +952,12 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 			};
 			if($from==$table){$sqlQuery.=$fromJoin;};
 // check for invalid column names
-			$cols=split(',',$cols_columns_fields);
+			$cols=explode(',',$cols_columns_fields);
 			$invalid_cols=''; $num_ics=0;
 			$key_processed=',';
 			for($j=0;$j<count($cols);$j+=1){
 				if($cols[$j]>''){
-					list($pseudo,$key,$keyOption,$submit,$op,$surro,$pct,$pct0,$constant,$element_style,$value_format,$element_type)=bus311tabledisplay_field_split($cols[$j]);$asurro='*'.$surro;
+					list($pseudo,$key,$keyOption,$submit,$op,$surro,$pct,$pct0,$constant,$element_style,$value_format,$element_type)=abase_field_split($cols[$j]);$asurro='*'.$surro;
 					if(!strpos(' '.$column_list,",$key,") && !strpos(' '.$key_processed,",$key,")){
 						$invalid_cols.=", $key";
 						$num_ics+=1;
@@ -1199,7 +1148,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 		$top_output = '';
 		$top_output.="<font style='color:$error_color; background-color: white;'>";
 		$settings=htmlspecialchars($full_short_code);
-		$settings_link="<A HREF='/wp-admin/options-general.php?page=".$GLOBALS['bus311mtd_Settings_Page_Slug']."' target='_blank' style='color:$error_color;'>";
+		$settings_link="<A HREF='/wp-admin/options-general.php?page=".$GLOBALS['abase_Settings_Page_Slug']."' target='_blank' style='color:$error_color;'>";
 		if($GLOBALS['bus311mtd_instance']>1){
 			$top_output.='<B>#'.$GLOBALS['bus311mtd_instance'].'. ';
 			$top_output.=htmlspecialchars($full_short_code).'</B>';
@@ -1226,7 +1175,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 //			$error_string.=', User: '.$sqlUser;
 			$top_output.="<BR><STRONG>Non-Fatal Error</STRONG> (".__LINE__.")<br>".substr($error_string,2);
 			$top_output.="<BR>Tables in database <I>$sqlDatabase</I>: $database_tables<BR>";
-			$top_output.="Click <nobr><STRONG><A HREF='/wp-admin/options-general.php?page=".$GLOBALS['bus311mtd_Settings_Page_Slug']."' target='_blank' style='color:$error_color;'>".$GLOBALS['bus311mtd_Settings_Option_Text']."</A></STRONG> in the WordPress Admin section for more information using ABASE.</nobr><BR>";
+			$top_output.="Click <nobr><STRONG><A HREF='/wp-admin/options-general.php?page=".$GLOBALS['abase_Settings_Page_Slug']."' target='_blank' style='color:$error_color;'>".$GLOBALS['abase_Settings_Option_Text']."</A></STRONG> in the WordPress Admin section for more information using ABASE.</nobr><BR>";
 			if($lost_table_error){$top_output.=substr($lost_table_error,0,strlen($lost_table_error)-4);};
 		};
 		$top_output.='</font>';
@@ -1259,25 +1208,25 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 		$top_output.="\n".$sqlQuery;
 		$top_output.="\n-->";
 	}else if($echo_in=='1'){
-		$top_output.='#'.$GLOBALS['bus311mtd_instance'].'. '.htmlspecialchars($short_code);
+		$top_output.='#'.$GLOBALS['bus311mtd_instance'].'. '.htmlspecialchars_decode($short_code);
 		if($error_string>''){$top_output.='#'.$GLOBALS['bus311mtd_instance'].'. '.'SHORTCODE ERROR: '.substr($error_string,2).'<BR>';};
-		if($pval<2 && ($db_in=='2' || $db_in=='3')){$top_output.='<sup> ('.$db_in.')</sup>';};
+		if($pval<2 && $db_in>='2'){$top_output.='<sup> ('.$db_in.')</sup>';};
 		$top_output.="<BR>";
 	}else if($echo_in=='99'){
 		$top_output.="<font style='color:$error_color; background-color: white;'>";
 		if($error_string>''){$top_output.='#'.$GLOBALS['bus311mtd_instance'].'. '.'SHORTCODE ERROR: '.substr($error_string,2).'<BR>';};
-		$top_output.='&lt;!-- #'.$GLOBALS['bus311mtd_instance'].' --&gt;';
-		$top_output.=htmlspecialchars($short_code);
-		if($pval<2 && ($db_in=='2' || $db_in=='3')){$top_output.='<sup> ('.$db_in.')</sup>';};
+		$top_output.='#'.$GLOBALS['bus311mtd_instance'].'. ';
+		$top_output.=htmlspecialchars_decode($short_code);
+		if($pval<2 && $db_in>='2'){$top_output.='<sup> ('.$db_in.')</sup>';};
 		$top_output.="<BR>".$sqlQuery.$debug_string;
 		$top_output.="<BR>";
 	}else if(strlen($echo_in)>1){
 //		$top_output.='<font color="'.$echo_in.'">';
 		$top_output.="<font style='color:$echo_in; background-color: white;'>";
 		if($error_string>''){$top_output.='#'.$GLOBALS['bus311mtd_instance'].'. '.'SHORTCODE ERROR: '.substr($error_string,2).'<BR>';};
-		$top_output.='&lt;!-- #'.$GLOBALS['bus311mtd_instance'].' --&gt;';
-		$top_output.=htmlspecialchars($short_code);
-		if($pval<2 && ($db_in=='2' || $db_in=='3')){$top_output.='<sup> ('.$db_in.')</sup>';};
+		$top_output.='#'.$GLOBALS['bus311mtd_instance'].'. ';
+		$top_output.=htmlspecialchars_decode($short_code);
+		if($pval<2 && $db_in>='2'){$top_output.='<sup> ('.$db_in.')</sup>';};
 		$top_output.='</font>';
 		$top_output.="<BR>";
 	};
@@ -1302,7 +1251,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 //		if($insert_in>'' && $insertPosted==$insert_in){
 		if(($form%10==1 || $form%10==2) && $insertPosted>'' && $form_name==$formPosted){
 //			$top_output.="\n\n<!-- _insert[] = $insertPosted - _form = ".$formPosted." -->\n\n";
-			$cols=split(',',$insertPosted);
+			$cols=explode(',',$insertPosted);
 			$set=''; $numUpdates=0; $wh=''; $updateString='';
 
 //SELECT AUTO_INCREMENT FROM information_schema.TABLES WHERE TABLE_SCHEMA = $sqlDatabase AND TABLE_NAME = $table
@@ -1317,7 +1266,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 
 			for($j=0;$j<count($cols);$j+=1){
 
-				list($pseudo,$key,$keyOption,$submit,$op,$surro,$pct,$pct0,$constant,$element_style,$value_format,$element_type)=bus311tabledisplay_field_split($cols[$j]);$asurro='*'.$surro;
+				list($pseudo,$key,$keyOption,$submit,$op,$surro,$pct,$pct0,$constant,$element_style,$value_format,$element_type)=abase_field_split($cols[$j]);$asurro='*'.$surro;
 				$key_=$key.'_';
 				if($key>''){
 					if($pseudo==''){$pseudo=$key;};
@@ -1346,7 +1295,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 
 	//			$top_output.="\n\n<!-- $target_Pathfile -->\n\n";
 
-							$dirs=split('/',$target_Path);
+							$dirs=explode('/',$target_Path);
 							$dir='';
 							for($d=0;$d<count($dirs);$d+=1){
 								$dir.=$dirs[$d].'/';
@@ -1391,7 +1340,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 					};
 					$verify_form=verify_form();	//	return 1 for VALID. return -2 for expired. return 0 for doesn't exist. return -1 for minimum time not yet reached.
 					if($verify_form==1){
-						record_progress(__LINE__,$sqlUpdateQuery);
+						record_progress(__LINE__,"VErify".$sqlUpdateQuery);
 						$sqlUpdateResult = mysql_query($sqlUpdateQuery, $abase_conn)
 							or die("Couldn't perform (".__LINE__.") $sqlUpdateQuery $update_in $elements_in " . mysql_error() . '.');
 						$sqlConfirm="SELECT `$idField` FROM $table $wh ORDER BY `$idField` DESC LIMIT 1";
@@ -1477,12 +1426,12 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 //			$top_output.="\n\n<!--- images $imagesPosted --->\n\n";
 
 //			if($fields_in>''){
-//				$cols=split(',',$fields_in);
+//				$cols=explode(',',$fields_in);
 //			}else if($columns_in>''){
-//				$cols=split(',',$columns_in);
+//				$cols=explode(',',$columns_in);
 //			};
 			
-			$cols=split(',',$updatePosted);
+			$cols=explode(',',$updatePosted);
 //$top_output.="\n\n<!--- updatePosted $updatePosted --->\n\n";
 
 			$set=''; 
@@ -1492,7 +1441,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 			$sqlRow = mysql_fetch_assoc($sqlResult);
 			for($j=0;$j<count($cols);$j+=1){
 
-				list($pseudo,$key,$keyOption,$submit,$op,$surro,$pct,$pct0,$constant,$element_style,$value_format,$element_type)=bus311tabledisplay_field_split($cols[$j]);$asurro='*'.$surro;
+				list($pseudo,$key,$keyOption,$submit,$op,$surro,$pct,$pct0,$constant,$element_style,$value_format,$element_type)=abase_field_split($cols[$j]);$asurro='*'.$surro;
 				if($pseudo==''){$pseudo=$key;};
 //				$top_output.="\n\n<!--- KEY = $key  - ".$_POST[$key_]." --->\n\n";
 //				$top_output.="\n\n<!--- password_in = $password_in  --->\n\n";
@@ -1519,7 +1468,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 						if(substr($target_Path,0,1) == '/'){$target_Path=substr($target_Path,1);};
 						$target_Pathfile = $target_Path.$fname;
 
-						$dirs=split('/',$target_Path);
+						$dirs=explode('/',$target_Path);
 						$dir='';
 						for($d=0;$d<count($dirs);$d+=1){
 							$dir.=$dirs[$d].'/';
@@ -1582,7 +1531,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 					$sqlRowUpdate = mysql_fetch_assoc($sqlResultConfirm);
 
 					for($j=0;$j<count($cols);$j+=1){
-						list($pseudo,$key,$keyOption,$submit,$op,$surro,$pct,$pct0,$constant,$element_style,$value_format,$element_type)=bus311tabledisplay_field_split($cols[$j]);$asurro='*'.$surro;
+						list($pseudo,$key,$keyOption,$submit,$op,$surro,$pct,$pct0,$constant,$element_style,$value_format,$element_type)=abase_field_split($cols[$j]);$asurro='*'.$surro;
 						$key_=$key.'_';
 						if($pseudo==''){$pseudo=$key;};
 
@@ -1781,7 +1730,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 					};
 				};
 				$table_columns=$col_columns_in;
-				$cols=split(',',$col_columns_in);
+				$cols=explode(',',$col_columns_in);
 
 			}else if($view=='record'){
 				if($fields_in=='*'){
@@ -1795,13 +1744,13 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 //					$output .="<BR><BR>$fields_in<br><BR>";
 				};
 				$table_columns=$fields_in;
-				$cols=split(',',$fields_in);
+				$cols=explode(',',$fields_in);
 			};
 			$left=str_replace('*',$table_columns,$left);
 			$center=str_replace('*',$table_columns,$center);
 			$right=str_replace('*',$table_columns,$right);
 			$fields_cols_columns='';
-			$styles=split(',',$styles_in);
+			$styles=explode(',',$styles_in);
 
 //			$output .="\n\n<!-- $sqlQuery -->\n\n";
 			if($notable!='1'){
@@ -1809,10 +1758,11 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 					$output .='<table style="'.$style.'"'.">";
 				}else{
 //					$output .="<table style='width:auto; padding:0 1.0em;'>";
+                    
 					if($form>=1){
 						$output .="<table style='width:auto;'>";
 					}else{
-						$output .="<table>";
+						$output .="<table id='myTable' class='sortable'>";
 					};
 				};
 			};
@@ -1852,13 +1802,16 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 				$output=$sqlResult;
 			}else{
 // TABLE ROW LOOP STARTS HERE
+                
 				while($sqlResult && $sqlResult != '1' && ($sqlRow = mysql_fetch_assoc($sqlResult)) || ($enableZeroRecords==1 && $rowLoop==0)){
 					$rowLoop+=1;
 					$abase_row='';
 					$abase_names='';
 					if($view=='table'){
+                        
 						$rw+=1;
 						if($rownum=='1'){
+                          
 							$abase_names.="<th>#</th>";
 							$abase_row .="<td>".$rw.".</td>";
 						};
@@ -1876,7 +1829,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 					};
 // ROW COLUMN LOOP STARTS HERE
 					for($j=0;$j<count($cols);$j+=1){
-						list($pseudo,$key,$keyOption,$submit,$op,$surro,$pct,$pct0,$constant,$element_style,$value_format,$element_type) = bus311tabledisplay_field_split($cols[$j]);
+						list($pseudo,$key,$keyOption,$submit,$op,$surro,$pct,$pct0,$constant,$element_style,$value_format,$element_type) = abase_field_split($cols[$j]);
 						$asurro='*'.$surro;
 						$pseudo_original=$pseudo;
 						if($pseudo==''){$pseudo=$key;};
@@ -1899,7 +1852,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 								$rw+=1;
 								if($rownum=='1'){$output .="<td>".$rw.".</td>";};
 							}else{
-//  $output.="\n\n<!--	center_in=$center_in, right_in=$right_in, left_in=$left_in	-->\n\n";
+                                  //  $output.="\n\n<!--	center_in=$center_in, right_in=$right_in, left_in=$left_in	-->\n\n";
 //  $output.="\n\n<!--	center=$center, right=$right, left=$left	-->\n\n";
 								if(strpos(' '.$center_in,'*')){
 									$sty=' style="text-align:center;"';
@@ -1920,10 +1873,13 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 									$sty=' style="text-align:left;"';
 								};
 //  $output.="\n\n<!--	key=$key, sty=$sty	-->\n\n";
-								$abase_names.="<th$sty>";
+                                //sme - hidden header work here - made header hidden
+                                if($element_type!='hidden'){$abase_names.="<th$sty>";
 								$abase_names .= $pseudo;
 								if(strpos(' '.$required,$commaedKey)){$abase_names .= "*";};
-								$abase_names .= "</th>";
+								
+                                
+                                $abase_names .=  "</th>";}
 							};
 							$ftype=$fieldType[$key];
 							$fsize='';
@@ -2023,15 +1979,29 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 								};
 			//	Update or Insert Form Element
 							}else if(strpos(' '.$update.$insert,$commaedKey) || ($form_type=='delete' && strlen($password_in)>0 && $password_in==$key)){
-								$abase_row .="<td$sty>";
-								$ordr=split(',',$update_in.$insert_in);
-								$styls=split(',',$input_styles_in);
+                                 //sme hidden row work
+								if($element_type!='hidden'){$abase_row .="<td$sty>";}
+								$ordr=explode(',',$update_in.$insert_in);
+								$styls=explode(',',$input_styles_in);
 								$input_style='';
 								for($i=0;$i<count($ordr);$i+=1){
 									if(trim($ordr[$i])==trim($key)){
 										$input_style=$styls[$i];
 									};
 								};
+                                
+                                //sme- added default.
+                                  if( $insert >'' ){
+                                            $ordr=explode(',',$insert_in);
+                                            $defval=explode(',',$default_in);
+                                        	for($i=0;$i<count($defval);$i+=1){
+									           if(trim($ordr[$i])==trim($key)){
+										          $sqlRowKey=$defval[$i];
+                                                  
+                                                };
+                                            };
+                                        };
+           
 								if($styles[$j]>''){$input_style=$styles[$j];};
 								$input_style=$element_style;
 								if($input_style>''){$input_style=' style="'.$input_style.'" ';};
@@ -2039,7 +2009,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 
 								if(strpos(' '.$files.$images,$commaedKey)){
 									if($sqlRowKey>''){
-										$fs=split('/',$sqlRowKey);
+										$fs=explode('/',$sqlRowKey);
 										$fn=$fs[count($fs)-1];
 										$abase_row .='<a href="/'.$sqlRowKey.'">'.$fn.'</a><BR>';
 										$ntt .='<a href="/'.$sqlRowKey.'">'.$fn.'</a>';
@@ -2055,15 +2025,25 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 								}else if($element_type=='textarea'){
 									$abase_row .="<textarea name='".$key."_' id='bus311mtd_".$ranstr.$key."' $input_style>".$sqlRowKey."</textarea>";
 									$ntt .="<textarea name='".$key."_' id='bus311mtd_".$ranstr.$key."' $input_style>".$sqlRowKey."</textarea>";
-								}else if($optionList>''){
+                                }else if($optionList>''){
 									$abase_row .="<select name='".$key."_' id='bus311mtd_".$ranstr.$key."'>".$optionList."</select>";
 									$ntt .="<select name='".$key."_' id='bus311mtd_".$ranstr.$key."'>".$optionList."</select>";
-								}else if($element_type!=''){
+								//sme add choice. 
+                                }else if($element_type=='choice'){ 
+                                    $options = $choice_in[$key];                             
+                                    $options_in = explode("^",$options);
+                                    foreach($options_in as $val) {
+                                        $optionList.="<option value='".$val."'";
+                                        if(strpos(' '.$update,$commaedKey) && $sqlRowKey==$val){$optionList.=" SELECTED";};
+                                        $optionList.=">".$val;
+                                            }
+									$abase_row .="<select name='".$key."_' id='bus311mtd_".$ranstr.$key."'>".$optionList."</select>";
+									$ntt .="<select name='".$key."_' id='bus311mtd_".$ranstr.$key."'>".$optionList."</select>";
+                                }else if($element_type!=''){
 									$abase_row .="<input name='".$key."_' id='bus311mtd_".$ranstr.$key."' type='".$element_type."' $input_style value='".$sqlRowKey."'>";
 									$ntt .="<input name='".$key."_' id='bus311mtd_".$ranstr.$key."' type=text $input_style value='".$sqlRowKey."'>";
 								}else if($ftype=='date'){
 									if($input_style==''){$input_style="size='10'";};
-									
 									$abase_row .="<input name='".$key."_' id='bus311mtd_".$ranstr.$key."' type=text $input_style value=".'"'.$sqlRowKey.'"'.">";
 									$ntt .="<input name='".$key."_' id='bus311mtd_".$ranstr.$key."' type=text $input_style value=".'"'.$sqlRowKey.'"'.">";
 								}else if($ftype=='longtext'){
@@ -2119,7 +2099,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 								if(0 && $submit>''){
 									$abase_row .="&nbsp; &nbsp; <input type=submit value='".$submit."'>";
 								};
-								$abase_row .="</td>";
+								if($element_type!='hidden'){$abase_row .="</td>";}
 
 			//	Search Form Element ($pseudo,$key,$keyOption,$submit,$op,$surro,$pct,$pct0,$constant)
 							}else if(strpos(' '.$search,$commaedKey)){
@@ -2215,11 +2195,14 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 
 						};
 
-
+//sme - put it together
+                        
 						if($view=='record'){
 							$output .="$abase_row</tr>";
 						};
 					};
+                    //sme - table build
+                    
 					if($view=='table'){
 						if(0 && $updateMsg>'' && $rw==1){
 							$output .="<TR>";
@@ -2253,7 +2236,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 		if($form%10==1 || $form%10==3 || $form==4){
 			if($form_type=='delete' || $form_type=='insert' || $form_type=='update'){
 				$submitip=time().':'.$remote_addr;
-				add_valid_form($submitip);
+			//	add_valid_form($submitip);
 				$outputx .="<input type='hidden' name='_submit' value='$submitip'>";
 			};
 			$outputx .="</FORM>";
@@ -2284,7 +2267,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 
 	$sc_content=do_shortcode($content);
 
-	$dnames=split("\.",$_SERVER['SERVER_NAME']);
+	$dnames=explode("\.",$_SERVER['SERVER_NAME']);
 	$nm=count($dnames);
 	$dname=$dnames[$nm-2].'.'.$dnames[$nm-1];
 	$send_the_email=0;
@@ -2334,6 +2317,7 @@ function bus311tabledisplay_function($pval,$incomingfromhandler,$content) {
 		};
 		record_progress(__LINE__,'end');
 		reopen_wpdb();
+     
 		return $top_output.$output;
 	};
 	record_progress(__LINE__,'end');
