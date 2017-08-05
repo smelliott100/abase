@@ -1971,11 +1971,11 @@ function abasetabledisplay_function($pval,$incomingfromhandler,$content) {
 			//	Appended Link
 							}else if($key==$alink){
 								if($alink_target==''){
-									$abase_row .="<td $sty><a href=$alink_url".$sqlRow[$alink_append].">".$sqlRowKey."</a></td>";
-									$ntt .="<a href=$alink_url".$sqlRow[$alink_append].">".$sqlRowKey."</a>";
+									$abase_row .="<td $sty><a href=$alink_url".$alink_append.$sqlRowKey.">".$sqlRowKey."</a></td>";
+									$ntt .="<a href=$alink_url".$alink_append.$sqlRowKey.">".$sqlRowKey."</a>";
 								}else{
-									$abase_row .="<td $sty><a href=$alink_url".$sqlRow[$alink_append]." target=".$alink_target.">".$sqlRowKey."</a></td>";
-									$ntt .="<a href=$alink_url".$sqlRow[$alink_append]." target=".$alink_target.">".$sqlRowKey."</a>";
+									$abase_row .="<td $sty><a href=$alink_url".$alink_append.$sqlRowKey." target=".$alink_target.">".$sqlRowKey.$sqlRowKey."</a></td>";
+									$ntt .="<a href=$alink_url".$alink_append.$sqlRowKey." target=".$alink_target.">".$sqlRowKey."</a>";
 								};
 			//	Update or Insert Form Element
 							}else if(strpos(' '.$update.$insert,$commaedKey) || ($form_type=='delete' && strlen($password_in)>0 && $password_in==$key)){
