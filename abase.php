@@ -96,6 +96,7 @@ function abase_handler($incomingfrompost, $content = null, $tag) {
 
 function record_progress($ln,$msg){
 	$testing_remote_address='';//::1
+	
 	if($testing_remote_address!=''){
 		$progress_log_file=WP_CONTENT_DIR . "/error.log";
 		$date = date("r");
@@ -1874,12 +1875,14 @@ function abasetabledisplay_function($pval,$incomingfromhandler,$content) {
 								};
 //  $output.="\n\n<!--	key=$key, sty=$sty	-->\n\n";
                                 //sme - hidden header work here - made header hidden
+                                if($insert_in==''){
                                 if($element_type!='hidden'){$abase_names.="<th$sty>";
 								$abase_names .= $pseudo;
 								if(strpos(' '.$required,$commaedKey)){$abase_names .= "*";};
 								
                                 
                                 $abase_names .=  "</th>";}
+                                };
 							};
 							$ftype=$fieldType[$key];
 							$fsize='';
@@ -1980,7 +1983,12 @@ function abasetabledisplay_function($pval,$incomingfromhandler,$content) {
 			//	Update or Insert Form Element
 							}else if(strpos(' '.$update.$insert,$commaedKey) || ($form_type=='delete' && strlen($password_in)>0 && $password_in==$key)){
                                  //sme hidden row work
-								if($element_type!='hidden'){$abase_row .="<td$sty>";}
+								if($element_type!='hidden'){
+								    //sme to change table alignment. 
+								    $abase_row .="<td$sty>$pseudo</td><td>";
+								   // $abase_row .="<td$sty>";
+								    
+								}
 								$ordr=explode(',',$update_in.$insert_in);
 								$styls=explode(',',$input_styles_in);
 								$input_style='';
@@ -2099,7 +2107,7 @@ function abasetabledisplay_function($pval,$incomingfromhandler,$content) {
 								if(0 && $submit>''){
 									$abase_row .="&nbsp; &nbsp; <input type=submit value='".$submit."'>";
 								};
-								if($element_type!='hidden'){$abase_row .="</td>";}
+								if($element_type!='hidden'){$abase_row .="</tr></td>";}
 
 			//	Search Form Element ($pseudo,$key,$keyOption,$submit,$op,$surro,$pct,$pct0,$constant)
 							}else if(strpos(' '.$search,$commaedKey)){
